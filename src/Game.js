@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+// import ToggleButton from "./ToggleButton";
 import './Game.css';
 
 
 const CELL_SIZE = 20;
 const WIDTH = 800;
-const HEIGHT = 600;
+const HEIGHT = 500;
 
 
 class Cell extends React.Component {
@@ -23,6 +24,8 @@ class Cell extends React.Component {
 }
 
 
+
+
 class Game extends React.Component {
 
     constructor() {
@@ -37,6 +40,8 @@ class Game extends React.Component {
         cells: [],
         isRunning: false,
         interval: 100,
+        rulesAlive: [0, 0, 1, 1, 0, 0, 0, 0, 0],
+        rulesDead: [0, 0, 0, 1, 0, 0, 0, 0, 0]
     }
 
     makeEmptyBoard() {
@@ -79,7 +84,7 @@ class Game extends React.Component {
         const elemOffset = this.getElementOffset();
         const offsetX = event.clientX - elemOffset.x;
         const offsetY = event.clientY - elemOffset.y;
-        
+
         const x = Math.floor(offsetX / CELL_SIZE);
         const y = Math.floor(offsetY / CELL_SIZE);
 
@@ -103,21 +108,36 @@ class Game extends React.Component {
         }
     }
 
+    matchesAliveRule(neighbors) {
+        return this.state.rulesAlive[neighbors] === 1;
+    }
+
+    matchesDeadRule(neighbors) {
+        return this.state.rulesDead[neighbors] === 1;
+    }
+
     runIteration() {
         let newBoard = this.makeEmptyBoard();
-
         for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
                 let neighbors = this.calculateNeighbors(this.board, x, y);
                 if (this.board[y][x]) {
-                    if (neighbors === 2 || neighbors === 3) {
+                    console.log(this.state.rulesAlive)
+                    if (this.matchesAliveRule(neighbors)) {
+                        console.log("alive")
+                        console.log(this.state.rulesAlive)
                         newBoard[y][x] = true;
                     } else {
                         newBoard[y][x] = false;
                     }
                 } else {
-                    if (!this.board[y][x] && neighbors === 3) {
-                        newBoard[y][x] = true;
+                    if (!this.board[y][x]) {
+                        if (this.matchesDeadRule(neighbors)) {
+                            console.log("revived")
+                            console.log(this.state.rulesDead)
+
+                            newBoard[y][x] = true;
+                        }
                     }
                 }
             }
@@ -144,8 +164,20 @@ class Game extends React.Component {
             const dir = dirs[i];
             let y1 = y + dir[0];
             let x1 = x + dir[1];
+            if (x1 < 0) {
+                x1 = this.cols - 1
+            }
+            if (x1 >= this.cols) {
+                x1 = 0
+            }
+            if (y1 < 0) {
+                y1 = this.rows - 1
+            }
+            if (y1 >= this.rows) {
+                y1 = 0
+            }
 
-            if (x1 >= 0 && x1 < this.cols && y1 >= 0 && y1 < this.rows && board[y1][x1]) {
+            if (board[y1][x1]) {
                 neighbors++;
             }
         }
@@ -157,32 +189,30 @@ class Game extends React.Component {
         this.setState({ interval: event.target.value });
     }
 
+    handleRulesAliveChange = (event) => {
+        this.setState({ rulesAlive: event.target.value.split`,`.map(x => +x) });
+    }
+
+    handleRulesDeadChange = (event) => {
+        this.setState({ rulesDead: event.target.value.split`,`.map(x => +x) });
+    }
+
     handleClear = () => {
         this.board = this.makeEmptyBoard();
         this.setState({ cells: this.makeCells() });
     }
 
-    handleRandom = () => {
-        for (let y = 0; y < this.rows; y++) {
-            for (let x = 0; x < this.cols; x++) {
-                this.board[y][x] = (Math.random() >= 0.5);
-            }
-        }
-
-        this.setState({ cells: this.makeCells() });
-    }
-
     render() {
-        const { cells, interval, isRunning } = this.state;
+        const { cells, interval, isRunning, rulesAlive, rulesDead } = this.state;
         return (
-            <div>
+            <div className="GameScreen">
                 <div className="Board"
-                    style={{ width: WIDTH, height: HEIGHT, backgroundSize: `${CELL_SIZE}px ${CELL_SIZE}px`}}
+                    style={{ width: WIDTH, height: HEIGHT, backgroundSize: `${CELL_SIZE}px ${CELL_SIZE}px` }}
                     onClick={this.handleClick}
                     ref={(n) => { this.boardRef = n; }}>
 
                     {cells.map(cell => (
-                        <Cell x={cell.x} y={cell.y} key={`${cell.x},${cell.y}`}/>
+                        <Cell x={cell.x} y={cell.y} key={`${cell.x},${cell.y}`} />
                     ))}
                 </div>
 
@@ -192,10 +222,34 @@ class Game extends React.Component {
                         <button className="button" onClick={this.stopGame}>Stop</button> :
                         <button className="button" onClick={this.runGame}>Run</button>
                     }
-                    <button className="button" onClick={this.handleRandom}>Random</button>
                     <button className="button" onClick={this.handleClear}>Clear</button>
+                    <div className="rulesContainer">
+                        <p>Rules for cell being alive</p>
+                        <input value={this.state.rulesAlive} onChange={this.handleRulesAliveChange} />
+                        {/* <ArrayInput array={this.state.rulesAlive} onValueChange={(values) => this.setState({ rulesAlive: values })}></ArrayInput> */}
+                        {/* <button onClick={() => {
+                            let rules = this.state.rulesAlive;
+                            let newVal;
+                            if (rules[1] === 1) {
+                                newVal = 1;
+                            } else {
+                                newVal = 0;
+                            }
+                            this.setState(prevState => ({
+                                rulesAlive: [
+                                    ...prevState.rulesAlive.slice(0, 1),
+                                    newVal,
+                                    ...prevState.rulesAlive.slice(2)
+                                ],
+                            }));
+                        }}>{this.state.rulesAlive[2]}</button> */}
+                    </div>
+                    <div className="rulesContainer">
+                        <p>Rules for cell being dead</p>
+                        <input value={this.state.rulesDead} onChange={this.handleRulesDeadChange} />
+                    </div>
                 </div>
-            </div>
+            </div >
         );
     }
 }
